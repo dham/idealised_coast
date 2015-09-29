@@ -1,7 +1,8 @@
 from firedrake import *
 import numpy as np
 
-m = RectangleMesh(50, 10, 100, 20)
+degree = 2
+quadrilateral = False
 
 # Parameters for Gaussian.
 a = 6
@@ -12,14 +13,34 @@ c = 50.
 def gaussian(x):
     return a * np.exp(-((x-50.)**2)/(2*sigma**2))
 
-x = m.coordinates.dat.data
 
+def function_space(mesh, degree, quadrilateral):
+    """Create the required mixed function space."""
+
+    if quadrilateral:
+        raise NotImplementedError
+    else:
+        if degree == 1:
+            V1 = FunctionSpace(m, "RT", 1)
+            V2 = FunctionSpace(m, "DG", 0)
+
+        elif degree == 2:
+            V1 = FunctionSpace(m, "BDFM", 2)
+            V2 = FunctionSpace(m, "DG", 1)
+
+        else:
+            raise ValueError("Degree must be 1 or 2")
+
+        return V1 * V2
+
+
+# Create the mesh and insert the gaussian bump.
+m = RectangleMesh(50, 10, 100, 20,
+                  quadrilateral=quadrilateral)
+x = m.coordinates.dat.data
 x[:, 1] = 20. + x[:, 1] * (gaussian(x[:, 0]) - 20.)/20.
 
-V1 = FunctionSpace(m, "RT", 1)
-V2 = FunctionSpace(m, "DG", 0)
-
-W = V1 * V2
+W = function_space(mesh, 1, quadrilateral)
 
 bcs = [DirichletBC(W[0], (1., 0.), 1),
        DirichletBC(W[0], (1., 0.), 2),
